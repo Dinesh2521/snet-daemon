@@ -57,7 +57,7 @@ func Publish(payload interface{}, serviceUrl string) bool {
 	return status
 }
 
-// Publish the json on the service end point
+// Publish the json on the service end point, retry will be set to false when trying to re publish the payload
 func publishJson(json []byte, serviceURL string, reTry bool) bool {
 	response, err := sendRequest(json, serviceURL)
 	if err != nil {
