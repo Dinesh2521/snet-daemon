@@ -5,6 +5,7 @@ package escrow
 import (
 	"errors"
 	"fmt"
+	"github.com/singnet/snet-daemon/authutils"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
@@ -34,7 +35,7 @@ func (service *PaymentChannelStateService) GetChannelState(context context.Conte
 
 	channelID := bytesToBigInt(request.GetChannelId())
 	signature := request.GetSignature()
-	sender, err := getSignerAddressFromMessage(bigIntToBytes(channelID), signature)
+	sender, err := authutils.GetSignerAddressFromMessage(bigIntToBytes(channelID), signature)
 	if err != nil {
 		return nil, errors.New("incorrect signature")
 	}
