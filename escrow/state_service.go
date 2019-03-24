@@ -3,8 +3,10 @@
 package escrow
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/singnet/snet-daemon/authutils"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -34,8 +36,17 @@ func (service *PaymentChannelStateService) GetChannelState(context context.Conte
 	}).Debug("GetChannelState called")
 
 	channelID := bytesToBigInt(request.GetChannelId())
+	currentBlock, err := authutils.CurrentBlock()
+	if err != nil {
+		return nil, errors.New("unable to read current block number")
+	}
+	message := bytes.Join([][]byte{
+		[]byte ("__get_state"),
+		channelID.Bytes(),
+		abi.U256(currentBlock),
+	}, nil)
 	signature := request.GetSignature()
-	sender, err := authutils.GetSignerAddressFromMessage(bigIntToBytes(channelID), signature)
+	sender, err := authutils.GetSignerAddressFromMessage(message, signature)
 	if err != nil {
 		return nil, errors.New("incorrect signature")
 	}
