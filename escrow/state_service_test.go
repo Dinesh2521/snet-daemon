@@ -71,7 +71,7 @@ var stateServiceTest = func() stateServiceTestType {
 		},
 	}
 }()
-/*
+
 func TestGetChannelState(t *testing.T) {
 	stateServiceTest.channelServiceMock.Put(
 		stateServiceTest.defaultChannelKey,
@@ -104,7 +104,7 @@ func TestGetChannelStateChannelIdIsNotPaddedByZero(t *testing.T) {
 	assert.Nil(t, err)
 	assert.Equal(t, stateServiceTest.defaultReply, reply)
 }
-*/
+
 func TestGetChannelStateChannelIdIncorrectSignature(t *testing.T) {
 	reply, err := stateServiceTest.service.GetChannelState(
 		nil,
@@ -164,7 +164,7 @@ func TestGetChannelStateIncorrectSender(t *testing.T) {
 	assert.Equal(t, errors.New("only channel signer can get latest channel state"), err)
 	assert.Nil(t, reply)
 }
-/*
+
 func TestGetChannelStateNoOperationsOnThisChannelYet(t *testing.T) {
 	channelData := stateServiceTest.defaultChannelData
 	channelData.AuthorizedAmount = nil
@@ -188,4 +188,3 @@ func TestGetChannelStateNoOperationsOnThisChannelYet(t *testing.T) {
 	expectedReply.PrevSignedAmount = nil
 	assert.Equal(t, expectedReply, reply)
 }
-*/

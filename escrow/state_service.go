@@ -47,6 +47,13 @@ func (service *PaymentChannelStateService) GetChannelState(context context.Conte
 	}, nil)
 	signature := request.GetSignature()
 	sender, err := authutils.GetSignerAddressFromMessage(message, signature)
+
+	//TODO fall back to older signature versions. this is only to enable backward compatibilty with other components
+	if err != nil {
+		log.Infof("message does not follow the new signature standard")
+	}
+	err = nil
+	sender, err = authutils.GetSignerAddressFromMessage(bigIntToBytes(channelID), signature)
 	if err != nil {
 		return nil, errors.New("incorrect signature")
 	}
