@@ -36,6 +36,15 @@ func (service *PaymentChannelStateService) GetChannelState(context context.Conte
 	}).Debug("GetChannelState called")
 
 	channelID := bytesToBigInt(request.GetChannelId())
+
+	channel, ok, err := service.channelService.PaymentChannel(&PaymentChannelKey{ID: channelID})
+	if err != nil {
+		return nil, errors.New("channel error:"+err.Error())
+	}
+	if !ok {
+		return nil, fmt.Errorf("channel is not found, channelId: %v", channelID)
+	}
+
 	currentBlock, err := authutils.CurrentBlock()
 	if err != nil {
 		return nil, errors.New("unable to read current block number")
@@ -46,28 +55,23 @@ func (service *PaymentChannelStateService) GetChannelState(context context.Conte
 		abi.U256(currentBlock),
 	}, nil)
 	signature := request.GetSignature()
-	sender, err := authutils.GetSignerAddressFromMessage(message, signature)
 
-	//TODO fall back to older signature versions. this is only to enable backward compatibilty with other components
-	if err != nil {
-		log.Infof("message does not follow the new signature standard")
-	}
-	err = nil
-	sender, err = authutils.GetSignerAddressFromMessage(bigIntToBytes(channelID), signature)
+	sender, err := authutils.GetSignerAddressFromMessage(message, signature)
 	if err != nil {
 		return nil, errors.New("incorrect signature")
 	}
 
-	channel, ok, err := service.channelService.PaymentChannel(&PaymentChannelKey{ID: channelID})
-	if err != nil {
-		return nil, errors.New("channel error:"+err.Error())
-	}
-	if !ok {
-		return nil, fmt.Errorf("channel is not found, channelId: %v", channelID)
-	}
-
+	//TODO fall back to older signature versions. this is only to enable backward compatibility with other components
 	if channel.Signer != *sender {
-		return nil, errors.New("only channel signer can get latest channel state")
+		log.Infof("message does not follow the new signature standard. fall back to older signature standard")
+
+		sender, err = authutils.GetSignerAddressFromMessage(bigIntToBytes(channelID), signature)
+		if err != nil {
+			return nil, errors.New("incorrect signature")
+		}
+		if channel.Signer != *sender {
+			return nil, errors.New("only channel signer can get latest channel state")
+		}
 	}
 
 	if channel.Signature == nil {
