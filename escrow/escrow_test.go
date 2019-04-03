@@ -176,8 +176,8 @@ func (suite *PaymentChannelServiceSuite) channel() *PaymentChannelData {
 		Signer:               suite.signerAddress,
 		AuthorizedAmount:     big.NewInt(0),
 		Signature:            nil,
-		OldnonceSignature:    nil,
-		OldnonceSignedAmount: big.NewInt(0),
+		OldNonceSignature:    nil,
+		OldNonceSignedAmount: big.NewInt(0),
 	}
 }
 
@@ -290,6 +290,6 @@ func (suite *PaymentChannelServiceSuite) TestStartClaim() {
 	updatedChannel, ok, errC := suite.service.PaymentChannel(&PaymentChannelKey{ID: channel.ChannelID})
 	assert.Equal(suite.T(), ok, true)
 	assert.Nil(suite.T(), errC, "Unexpected error: %v", errC)
-	assert.Equal(suite.T(), updatedChannel.OldnonceSignature, tmpOldnonceSignature)
-	assert.Equal(suite.T(), updatedChannel.OldnonceSignedAmount, tmpOldnonceSignedAmount)
+	assert.Equal(suite.T(), updatedChannel.OldNonceSignature, tmpOldnonceSignature)
+	assert.Equal(suite.T(), updatedChannel.OldNonceSignedAmount, tmpOldnonceSignedAmount)
 }
