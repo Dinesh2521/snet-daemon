@@ -17,6 +17,7 @@ type stateServiceTestType struct {
 	signerPrivateKey   *ecdsa.PrivateKey
 	signerAddress      common.Address
 	channelServiceMock *paymentChannelServiceMock
+	paymentStorage     *PaymentStorage
 
 	defaultChannelId   *big.Int
 	defaultChannelKey  *PaymentChannelKey
@@ -38,14 +39,13 @@ var stateServiceTest = func() stateServiceTestType {
 		panic("Could not make default Signature")
 	}
 
-	defaultPrevSignature, err := hex.DecodeString("0403020100")
-	if err != nil {
-		panic("Could not make default previous Signature")
-	}
+	paymentStorage := NewPaymentStorage(NewMemStorage())
 
 	return stateServiceTestType{
 		service: PaymentChannelStateService{
 			channelService: channelServiceMock,
+			paymentStorage : paymentStorage,
+
 		},
 		senderAddress:      senderAddress,
 		signerPrivateKey:   signerPrivateKey,
@@ -61,8 +61,6 @@ var stateServiceTest = func() stateServiceTestType {
 			Signature:            defaultSignature,
 			Nonce:                big.NewInt(3),
 			AuthorizedAmount:     big.NewInt(12345),
-			OldNonceSignature:    defaultPrevSignature,
-			OldNonceSignedAmount: big.NewInt(2345),
 		},
 		defaultRequest: &ChannelStateRequest{
 			ChannelId: bigIntToBytes(defaultChannelId),
@@ -72,8 +70,6 @@ var stateServiceTest = func() stateServiceTestType {
 			CurrentNonce:         bigIntToBytes(big.NewInt(3)),
 			CurrentSignedAmount:  bigIntToBytes(big.NewInt(12345)),
 			CurrentSignature:     defaultSignature,
-			OldNonceSignature:    defaultPrevSignature,
-			OldNonceSignedAmount: bigIntToBytes(big.NewInt(2345)),
 		},
 	}
 }()
@@ -83,6 +79,10 @@ func TestGetChannelState(t *testing.T) {
 		stateServiceTest.defaultChannelKey,
 		stateServiceTest.defaultChannelData,
 	)
+	payment := getPaymentFromChannel(stateServiceTest.defaultChannelData)
+	stateServiceTest.paymentStorage = NewPaymentStorage(NewMemStorage())
+	stateServiceTest.paymentStorage.Put(payment)
+
 	defer stateServiceTest.channelServiceMock.Clear()
 
 	reply, err := stateServiceTest.service.GetChannelState(
@@ -175,54 +175,6 @@ func TestGetChannelStateIncorrectSender(t *testing.T) {
 
 	assert.Equal(t, errors.New("only channel signer can get latest channel state"), err)
 	assert.Nil(t, reply)
-}
-
-func TestGetChannelStateVerifyPrevChannelState(t *testing.T) {
-	tmpSignature, err := hex.DecodeString("0102030405")
-	tmpSignedAmount := big.NewInt(34545)
-
-	channelData := stateServiceTest.defaultChannelData
-	channelData.OldNonceSignature = tmpSignature
-	channelData.OldNonceSignedAmount = tmpSignedAmount
-
-	stateServiceTest.channelServiceMock.Put(
-		stateServiceTest.defaultChannelKey,
-		channelData,
-	)
-	reply, err := stateServiceTest.service.GetChannelState(
-		nil,
-		stateServiceTest.defaultRequest,
-	)
-	assert.Nil(t, err)
-	expectedReply := stateServiceTest.defaultReply
-	expectedReply.OldNonceSignature = tmpSignature
-	expectedReply.OldNonceSignedAmount = bigIntToBytes(tmpSignedAmount)
-	assert.Equal(t, expectedReply, reply)
-
-	defer stateServiceTest.channelServiceMock.Clear()
-}
-
-// prev signature and authorized values  could be nil
-func TestGetChannelStateVerifyPrevChannelStateBegining(t *testing.T) {
-	channelData := stateServiceTest.defaultChannelData
-	channelData.OldNonceSignature = nil
-	channelData.OldNonceSignedAmount = big.NewInt(-1)
-
-	stateServiceTest.channelServiceMock.Put(
-		stateServiceTest.defaultChannelKey,
-		channelData,
-	)
-	defer stateServiceTest.channelServiceMock.Clear()
-
-	reply, err := stateServiceTest.service.GetChannelState(
-		nil,
-		stateServiceTest.defaultRequest,
-	)
-	assert.Nil(t, err)
-	expectedReply := stateServiceTest.defaultReply
-	expectedReply.OldNonceSignature = nil
-	expectedReply.OldNonceSignedAmount = bigIntToBytes(big.NewInt(-1))
-	assert.Equal(t, expectedReply, reply)
 }
 
 func TestGetChannelStateNoOperationsOnThisChannelYet(t *testing.T) {

@@ -66,8 +66,6 @@ func (suite *PaymentChannelStorageSuite) channel() *PaymentChannelData {
 		Signer:               suite.signerAddress,
 		AuthorizedAmount:     big.NewInt(0),
 		Signature:            nil,
-		OldNonceSignedAmount: big.NewInt(6789),
-		OldNonceSignature:    nil,
 	}
 }
 
@@ -91,7 +89,6 @@ func (suite *PaymentChannelStorageSuite) TestGetChannel() {
 	assert.Nil(suite.T(), err, "Unexpected error: %v", err)
 	assert.Equal(suite.T(), true, ok)
 	assert.Equal(suite.T(), expectedChannel, channel)
-	assert.Equal(suite.T(), big.NewInt(6789), channel.OldNonceSignedAmount)
 }
 
 type BlockchainChannelReaderSuite struct {
@@ -149,8 +146,6 @@ func (suite *BlockchainChannelReaderSuite) channel() *PaymentChannelData {
 		Signer:               suite.signerAddress,
 		AuthorizedAmount:     big.NewInt(0),
 		Signature:            nil,
-		OldNonceSignedAmount: big.NewInt(0),
-		OldNonceSignature:    nil,
 	}
 }
 
