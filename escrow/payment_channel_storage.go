@@ -156,6 +156,8 @@ func (reader *BlockchainChannelReader) GetChannelStateFromBlockchain(key *Paymen
 // MergeStorageAndBlockchainChannelState merges two instances of payment
 // channel: one read from storage, one from blockchain.
 func MergeStorageAndBlockchainChannelState(storage, blockchain *PaymentChannelData) (merged *PaymentChannelData) {
+	fmt.Printf("\n blockchain nonce %v", blockchain.Nonce)
+	fmt.Printf("\n storage nonce %v", storage.Nonce)
 	cmp := storage.Nonce.Cmp(blockchain.Nonce)
 	if cmp > 0 {
 		return storage

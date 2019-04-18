@@ -41,7 +41,7 @@ func (service *PaymentChannelStateService) GetChannelState(context context.Conte
 	if err != nil {
 		return nil, errors.New("incorrect signature")
 	}
-
+	fmt.Printf("\n i am called... ")
 	channel, ok, err := service.channelService.PaymentChannel(&PaymentChannelKey{ID: channelID})
 	if err != nil {
 		return nil, errors.New("channel error:" + err.Error())
@@ -54,36 +54,43 @@ func (service *PaymentChannelStateService) GetChannelState(context context.Conte
 		return nil, errors.New("only channel signer can get latest channel state")
 	}
 
+	fmt.Printf("\n%v", bigIntToBytes(channel.Nonce))
+	fmt.Printf("\n%v", bigIntToBytes(channel.AuthorizedAmount))
+	fmt.Printf("\n%v", channel.Signature)
+
+	// check if nonce matches with blockchain or not
+	nonceEqual, err := service.channelService.StorageNonceMatchesWithBLockchainNonce(&PaymentChannelKey{ID: channelID})
+	if err != nil {
+		return nil, errors.New("channel nonce comparision error:" + err.Error())
+	}
+	if !nonceEqual {
+		// check for payments in the payment storage with current nonce -1, this will happen if blockchain processed the claim
+		// but cli couldn't send the details to daemon update its state
+		paymentID := fmt.Sprintf("%v/%v", channel.ChannelID, (&big.Int{}).Sub(channel.Nonce, big.NewInt(1)))
+		fmt.Printf("\nchannel storage : noonce %v", (&big.Int{}).Sub(channel.Nonce, big.NewInt(1)))
+		payment, ok, err := service.paymentStorage.Get(paymentID)
+		if err == nil && ok && payment != nil {
+			log.Infof("old payment detected for the channel %v (payments with  nonce = current nonce -1).", channelID)
+			fmt.Printf("\n%v", bigIntToBytes(payment.Amount))
+			fmt.Printf("\n%v", payment.Signature)
+
+			// return the channel state with old nonce
+			return &ChannelStateReply{
+				CurrentNonce:         bigIntToBytes(channel.Nonce),
+				CurrentSignedAmount:  bigIntToBytes(channel.AuthorizedAmount),
+				CurrentSignature:     channel.Signature,
+				OldNonceSignedAmount: bigIntToBytes(payment.Amount),
+				OldNonceSignature:    payment.Signature,
+			}, nil
+		}
+		return nil, errors.New("unable to extract old payment from storage:" + err.Error())
+	}
+
 	if channel.Signature == nil {
 		return &ChannelStateReply{
 			CurrentNonce: bigIntToBytes(channel.Nonce),
 		}, nil
 	}
-
-	/*
-	fmt.Printf("\n%v", bigIntToBytes(channel.Nonce))
-	fmt.Printf("\n%v", bigIntToBytes(channel.AuthorizedAmount))
-	fmt.Printf("\n%v", channel.Signature)*/
-
-	// check for payments in the payment storage with current nonce -1
-	paymentID := fmt.Sprintf("%v/%v", channel.ChannelID,  (&big.Int{}).Sub(channel.Nonce, big.NewInt(1)))
-	payment, ok, err  := service.paymentStorage.Get(paymentID)
-	if err == nil && ok {
-		log.Infof("old payments detected (payments with  nonce = current noonce -1).")
-
-		//fmt.Printf("\n%v", bigIntToBytes(channel.OldNonceSignedAmount))
-		//fmt.Printf("\n%v", channel.OldNonceSignature)
-
-		// return the channel satate with old nonce
-		return &ChannelStateReply{
-			CurrentNonce:         bigIntToBytes(channel.Nonce),
-			CurrentSignedAmount:  bigIntToBytes(channel.AuthorizedAmount),
-			CurrentSignature:     channel.Signature,
-			OldNonceSignedAmount: bigIntToBytes(payment.Amount),
-			OldNonceSignature:    payment.Signature,
-		}, nil
-	}
-
 
 	return &ChannelStateReply{
 		CurrentNonce:         bigIntToBytes(channel.Nonce),
